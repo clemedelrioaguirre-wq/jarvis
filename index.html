@@ -198,7 +198,7 @@
     </div>
     <div class="tools">
       <span class="chip" id="chipCore" data-on="warn"><i></i><span>Núcleo IA · iniciando</span></span>
-      <span class="chip" id="chipWeb" data-on="warn" title="Búsqueda web de Google"><i></i><span>Enlace web · apagado</span></span>
+      <span class="chip" id="chipWeb" data-on="warn" title="Búsqueda web de Groq"><i></i><span>Enlace web · apagado</span></span>
       <button class="btn" id="keyBtn" type="button">Clave API</button>
       <button class="btn" id="voiceBtn" type="button" aria-pressed="false" hidden>Voz · No</button>
     </div>
@@ -238,11 +238,11 @@
 
 <dialog id="dlg">
   <form method="dialog" id="dlgForm">
-    <h2>Conectar con Gemini (gratis)</h2>
-    <p>Consigue una clave gratis en <b>aistudio.google.com/apikey</b> (solo con tu cuenta de Google, sin tarjeta). Se guarda solo en este navegador y se envía únicamente a Google.</p>
-    <label>Clave API<input id="keyInput" type="password" placeholder="AIza..." autocomplete="off"></label>
-    <label>Modelo<input id="modelInput" type="text" value="gemini-2.5-flash" autocomplete="off"></label>
-    <label class="row"><input id="webInput" type="checkbox" checked> Permitir búsqueda en internet (Google Search, incluida en el plan gratis con límite diario)</label>
+    <h2>Conectar con Groq (gratis)</h2>
+    <p>Consigue una clave gratis en <b>console.groq.com/keys</b> (sin tarjeta). Se guarda solo en este navegador y se envía únicamente a Groq.</p>
+    <label>Clave API<input id="keyInput" type="password" placeholder="gsk_..." autocomplete="off"></label>
+    <label>Modelo<input id="modelInput" type="text" value="llama-3.3-70b-versatile" autocomplete="off"></label>
+    <label class="row"><input id="webInput" type="checkbox" checked> Permitir búsqueda en internet (usa el modelo groq/compound, con límite diario)</label>
     <div class="acts"><button class="btn" type="button" id="keyClear">Borrar clave</button><button class="btn" value="ok" id="keySave">Guardar</button></div>
   </form>
 </dialog>
@@ -397,7 +397,7 @@
       'Idioma: el del usuario; por defecto español.',
       'Estilo: respuestas directas y compactas, normalmente de uno a cuatro párrafos cortos. Usa listas o bloques de código solo cuando ayuden. Sin encabezados ni emojis. No te presentes de nuevo en cada mensaje.',
       webOn ? 'Tienes búsqueda web: úsala para datos actuales (noticias, precios, clima, resultados) y menciona la fuente brevemente.' : 'Ahora mismo no tienes búsqueda web. Si piden datos actuales, dilo en una frase, da lo que sepas aclarando que puede estar desactualizado. Nunca inventes datos ni fuentes.',
-      'Si te preguntan con sinceridad qué eres, aclara que eres un personaje de interfaz impulsado por un modelo Gemini de Google.',
+      'Si te preguntan con sinceridad qué eres, aclara que eres un personaje de interfaz impulsado por un modelo de lenguaje abierto ejecutado en Groq.',
       'Fecha y hora del usuario: ' + when + '.',
       'A continuación va la conversación.'
     ].join('\n');
@@ -406,7 +406,7 @@
   function copyFor(code) {
     switch (code) {
       case 'rate_limited': return 'Se alcanzó el límite de uso. Intente de nuevo en unos minutos.';
-      case 'bad_key': return 'Google rechazó la clave. Revísela en Clave API.';
+      case 'bad_key': return 'Groq rechazó la clave. Revísela en Clave API.';
       case 'no_credit': return 'Se agotó la cuota gratuita de hoy. Intente de nuevo más tarde.';
       case 'refused': return 'No puedo ayudar con esa solicitud.';
       case 'prompt_too_large': return 'La conversación es demasiado larga. Recargue la página para empezar de nuevo.';
@@ -469,7 +469,7 @@
       } else {
         var part = (e && e.text) || got;
         if (part) { renderRich(m.body, part); history.push({ role: 'assistant', content: part }); } else { m.body.textContent = ''; }
-        note(m, copyFor(code), true);
+        note(m, copyFor(code) + (e && e.detail ? ' [' + e.detail + ']' : ''), true);
       }
     } finally {
       ctl = null;
@@ -499,56 +499,53 @@
     });
   });
 
-  /* ---------- Gemini connection (key stays in this browser) ---------- */
+  /* ---------- Groq connection (key stays in this browser) ---------- */
   var dlg = $('#dlg'), keyInput = $('#keyInput'), modelInput = $('#modelInput'), webInput = $('#webInput');
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; }
   function refreshChips() {
-    var has = !!ls('gem_key');
-    webOn = ls('gem_web') !== '0';
+    var has = !!ls('groq_key');
+    webOn = ls('groq_web') !== '0';
     chipCore.dataset.on = has ? 'true' : 'warn';
-    chipCore.lastChild.textContent = has ? 'Núcleo IA · ' + (ls('gem_model') || 'gemini-2.5-flash') : 'Núcleo IA · falta clave';
+    chipCore.lastChild.textContent = has ? 'Núcleo IA · ' + (ls('groq_model') || 'llama-3.3-70b-versatile') : 'Núcleo IA · falta clave';
     chipWeb.dataset.on = webOn ? 'true' : 'warn';
     chipWeb.lastChild.textContent = webOn ? 'Enlace web · activo' : 'Enlace web · apagado';
     $('#roKnow').textContent = webOn ? 'Búsqueda en vivo' : 'Almacenado';
     $('#roKnow').className = webOn ? '' : 'dim';
   }
   $('#keyBtn').addEventListener('click', function () {
-    keyInput.value = ls('gem_key') || ''; modelInput.value = ls('gem_model') || 'gemini-2.5-flash'; webInput.checked = ls('gem_web') !== '0';
+    keyInput.value = ls('groq_key') || ''; modelInput.value = ls('groq_model') || 'llama-3.3-70b-versatile'; webInput.checked = ls('groq_web') !== '0';
     dlg.showModal();
   });
   $('#keySave').addEventListener('click', function () {
-    ls('gem_key', keyInput.value.trim()); ls('gem_model', modelInput.value.trim() || 'gemini-2.5-flash'); ls('gem_web', webInput.checked ? '1' : '0');
+    ls('groq_key', keyInput.value.trim()); ls('groq_model', modelInput.value.trim() || 'llama-3.3-70b-versatile'); ls('groq_web', webInput.checked ? '1' : '0');
     refreshChips();
   });
-  $('#keyClear').addEventListener('click', function () { ls('gem_key', null); keyInput.value = ''; refreshChips(); });
+  $('#keyClear').addEventListener('click', function () { ls('groq_key', null); keyInput.value = ''; refreshChips(); });
 
   function err(code, text) { var e = new Error(code); e.code = code; e.text = text; return e; }
 
-  async function callModel(turns, signal, onText) {
-    var key = ls('gem_key');
+  async function callModel(turns, signal, onText, noWeb) {
+    var key = ls('groq_key');
     if (!key) throw err('no_key');
-    var model = ls('gem_model') || 'gemini-2.5-flash';
-    var body = {
-      systemInstruction: { parts: [{ text: rules() }] },
-      contents: turns.map(function (t) { return { role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] }; }),
-      generationConfig: { maxOutputTokens: mode === 'complex' ? 8192 : 2048 }
-    };
-    if (webOn) body.tools = [{ google_search: {} }];
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':streamGenerateContent?alt=sse';
+    var useWeb = webOn && !noWeb;
+    var model = useWeb ? 'groq/compound' : (ls('groq_model') || 'llama-3.3-70b-versatile');
+    var msgs = [{ role: 'system', content: rules() }].concat(turns.map(function (t) { return { role: t.role, content: t.content }; }));
+    var body = { model: model, messages: msgs, stream: true, max_tokens: mode === 'complex' ? 6000 : 2048 };
     var res;
     try {
-      res = await fetch(url, {
+      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', signal: signal,
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
         body: JSON.stringify(body)
       });
-    } catch (e) { if (e.name === 'AbortError') throw err('cancelled'); throw err('network'); }
+    } catch (e) { if (e.name === 'AbortError') throw err('cancelled'); var ne = err('network'); ne.detail = 'sin respuesta del servidor (revise su conexión o bloqueadores)'; throw ne; }
     if (!res.ok) {
-      var j = null; try { j = await res.json(); } catch (e) {}
-      var msg = (j && j.error && j.error.message) || '';
-      if (res.status === 401 || res.status === 403 || /API key/i.test(msg)) throw err('bad_key');
-      if (res.status === 429) throw err(/quota|exhaust/i.test(msg) ? 'no_credit' : 'rate_limited');
-      throw err('network');
+      var detail = '';
+      try { var j = await res.json(); detail = (j && j.error && j.error.message) || ''; } catch (e) {}
+      if (res.status === 401) throw err('bad_key');
+      if (res.status === 429) throw err('rate_limited');
+      if (useWeb && res.status !== 403) return callModel(turns, signal, onText, true);
+      var er = err('network'); er.detail = res.status + (detail ? ' · ' + detail.slice(0, 160) : ''); throw er;
     }
     var reader = res.body.getReader(), dec = new TextDecoder(), buf = '', full = '', truncated = false;
     try {
@@ -560,14 +557,13 @@
         for (var pi = 0; pi < parts.length; pi++) {
           var line = parts[pi].split(/\r?\n/).filter(function (l) { return l.indexOf('data:') === 0; })[0];
           if (!line) continue;
-          var ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
-          var cand = ev.candidates && ev.candidates[0];
-          if (!cand) { if (ev.promptFeedback && ev.promptFeedback.blockReason) throw err('refused', full); continue; }
-          var ps = (cand.content && cand.content.parts) || [];
-          ps.forEach(function (p) { if (p.text && !p.thought) full += p.text; });
-          if (ps.length) onText(full);
-          if (cand.finishReason === 'MAX_TOKENS') truncated = true;
-          if (cand.finishReason === 'SAFETY') throw err('refused', full);
+          var raw = line.slice(5).trim();
+          if (raw === '[DONE]') continue;
+          var ev; try { ev = JSON.parse(raw); } catch (e) { continue; }
+          var ch = ev.choices && ev.choices[0];
+          if (!ch) continue;
+          if (ch.delta && ch.delta.content) { full += ch.delta.content; onText(full); }
+          if (ch.finish_reason === 'length') truncated = true;
         }
       }
     } catch (e) {
@@ -583,7 +579,7 @@
   refreshChips();
   input.disabled = false; sendBtn.disabled = false;
   input.placeholder = 'Pregúntele lo que quiera a Jarvis…';
-  if (!ls('gem_key')) { var gm = addMsg('jarvis', ''); note(gm, 'Para activarme, pulse «Clave API» arriba y pegue su clave gratuita de Google AI Studio.', false); }
+  if (!ls('groq_key')) { var gm = addMsg('jarvis', ''); note(gm, 'Para activarme, pulse «Clave API» arriba y pegue su clave gratuita de Groq.', false); }
 
   /* ---------- arc reactor ---------- */
   var cv = $('#reactor'), ctx = cv.getContext('2d'), box = $('#reactorBox');
